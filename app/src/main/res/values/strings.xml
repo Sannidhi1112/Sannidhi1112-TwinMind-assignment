@@ -1,0 +1,43 @@
+<resources>
+    <string name="app_name">Voice Recorder</string>
+
+    <!-- Recording -->
+    <string name="recording_notification_title">Recording in progress</string>
+    <string name="recording_notification_channel">Recording Service</string>
+    <string name="recording_notification_description">Voice recording notifications</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+
+    <!-- Status Messages -->
+    <string name="status_recording">Recording...</string>
+    <string name="status_paused_call">Paused - Phone call</string>
+    <string name="status_paused_audio_focus">Paused - Audio focus lost</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_processing">Processing...</string>
+
+    <!-- Errors -->
+    <string name="error_low_storage">Recording stopped - Low storage</string>
+    <string name="error_no_audio">No audio detected - Check microphone</string>
+    <string name="error_transcription_failed">Transcription failed</string>
+    <string name="error_summary_failed">Summary generation failed</string>
+
+    <!-- Permissions -->
+    <string name="permission_audio_rationale">Audio recording permission is required to record meetings</string>
+    <string name="permission_phone_state_rationale">Phone state permission is required to pause recording during calls</string>
+    <string name="permission_notification_rationale">Notification permission is required to show recording status</string>
+
+    <!-- UI Labels -->
+    <string name="label_start_recording">Start Recording</string>
+    <string name="label_stop_recording">Stop Recording</string>
+    <string name="label_meetings">My Meetings</string>
+    <string name="label_generating_summary">Generating summary...</string>
+    <string name="label_retry">Retry</string>
+    <string name="label_no_meetings">No meetings yet</string>
+
+    <!-- Summary Sections -->
+    <string name="section_title">Title</string>
+    <string name="section_summary">Summary</string>
+    <string name="section_action_items">Action Items</string>
+    <string name="section_key_points">Key Points</string>
+</resources>
