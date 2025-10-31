@@ -27,23 +27,23 @@ class SummaryService @Inject constructor() {
      */
     fun generateSummary(transcript: String): Flow<SummaryResponse> = flow {
         try {
-            // Simulate streaming response
-            delay(1000)
+            // Simulate streaming response (faster for testing)
+            delay(300)
 
             // Generate title first
             val title = generateTitle(transcript)
             emit(SummaryResponse(title, "", emptyList(), emptyList()))
-            delay(500)
+            delay(200)
 
             // Generate summary
             val summary = generateSummaryText(transcript)
             emit(SummaryResponse(title, summary, emptyList(), emptyList()))
-            delay(500)
+            delay(200)
 
             // Generate action items
             val actionItems = generateActionItems(transcript)
             emit(SummaryResponse(title, summary, actionItems, emptyList()))
-            delay(500)
+            delay(200)
 
             // Generate key points
             val keyPoints = generateKeyPoints(transcript)
