@@ -50,6 +50,17 @@ class TranscriptionWorker @AssistedInject constructor(
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
 
+        private fun resolveDependencies(context: Context): Dependencies {
+            val entryPoint = EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                TranscriptionWorkerEntryPoint::class.java
+            )
+            return Dependencies(
+                repository = entryPoint.recordingRepository(),
+                transcriptionService = entryPoint.transcriptionService()
+            )
+        }
+
         fun createWorkRequest(recordingId: Long): OneTimeWorkRequest {
             val data = Data.Builder()
                 .putLong(KEY_RECORDING_ID, recordingId)
