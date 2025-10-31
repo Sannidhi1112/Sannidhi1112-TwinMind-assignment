@@ -8,6 +8,10 @@ import com.twinmind.voicerecorder.data.remote.SummaryService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -22,6 +26,26 @@ class SummaryGenerationWorker @AssistedInject constructor(
     private val repository: RecordingRepository,
     private val summaryService: SummaryService
 ) : CoroutineWorker(context, workerParams) {
+
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface SummaryWorkerEntryPoint {
+        fun recordingRepository(): RecordingRepository
+        fun summaryService(): SummaryService
+    }
+
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            SummaryWorkerEntryPoint::class.java
+        ).recordingRepository(),
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            SummaryWorkerEntryPoint::class.java
+        ).summaryService()
+    )
 
     companion object {
         const val KEY_RECORDING_ID = "recording_id"

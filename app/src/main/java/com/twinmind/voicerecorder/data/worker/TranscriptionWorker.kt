@@ -9,6 +9,10 @@ import com.twinmind.voicerecorder.data.remote.TranscriptionService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -21,6 +25,26 @@ class TranscriptionWorker @AssistedInject constructor(
     private val repository: RecordingRepository,
     private val transcriptionService: TranscriptionService
 ) : CoroutineWorker(context, workerParams) {
+
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface TranscriptionWorkerEntryPoint {
+        fun recordingRepository(): RecordingRepository
+        fun transcriptionService(): TranscriptionService
+    }
+
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            TranscriptionWorkerEntryPoint::class.java
+        ).recordingRepository(),
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            TranscriptionWorkerEntryPoint::class.java
+        ).transcriptionService()
+    )
 
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
