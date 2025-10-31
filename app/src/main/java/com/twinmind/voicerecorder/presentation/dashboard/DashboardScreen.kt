@@ -168,14 +168,15 @@ private fun RecordingItem(
 private fun StatusChip(status: RecordingStatus) {
     val (text, color) = when (status) {
         RecordingStatus.RECORDING -> "Recording" to MaterialTheme.colorScheme.error
+        RecordingStatus.PAUSED_CALL -> "Paused - Call" to MaterialTheme.colorScheme.tertiary
+        RecordingStatus.PAUSED_AUDIO_FOCUS -> "Paused - Audio" to MaterialTheme.colorScheme.tertiary
         RecordingStatus.STOPPED -> "Processing" to MaterialTheme.colorScheme.tertiary
-        RecordingStatus.TRANSCRIBING -> "Transcribing" to MaterialTheme.colorScheme.tertiary
-        RecordingStatus.TRANSCRIPTION_COMPLETE -> "Complete" to MaterialTheme.colorScheme.primary
-        RecordingStatus.GENERATING_SUMMARY -> "Generating" to MaterialTheme.colorScheme.tertiary
+        RecordingStatus.TRANSCRIBING -> "Transcribing" to MaterialTheme.colorScheme.secondary
+        RecordingStatus.TRANSCRIPTION_COMPLETE -> "Transcribed" to MaterialTheme.colorScheme.secondary
+        RecordingStatus.GENERATING_SUMMARY -> "Summarizing" to MaterialTheme.colorScheme.secondary
         RecordingStatus.SUMMARY_COMPLETE -> "Complete" to MaterialTheme.colorScheme.primary
         RecordingStatus.TRANSCRIPTION_FAILED,
         RecordingStatus.SUMMARY_FAILED -> "Failed" to MaterialTheme.colorScheme.error
-        else -> "Unknown" to MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Surface(
