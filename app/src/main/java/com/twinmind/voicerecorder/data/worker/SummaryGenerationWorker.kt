@@ -2,12 +2,22 @@ package com.twinmind.voicerecorder.data.worker
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
-import androidx.work.*
+import androidx.work.BackoffPolicy
+import androidx.work.CoroutineWorker
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.Result
+import androidx.work.WorkerParameters
 import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
 import com.twinmind.voicerecorder.data.remote.SummaryService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
+import com.twinmind.voicerecorder.di.workerEntryPoint
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -23,9 +33,38 @@ class SummaryGenerationWorker @AssistedInject constructor(
     private val summaryService: SummaryService
 ) : CoroutineWorker(context, workerParams) {
 
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    internal interface SummaryWorkerEntryPoint {
+        fun recordingRepository(): RecordingRepository
+        fun summaryService(): SummaryService
+    }
+
+    private constructor(
+        context: Context,
+        workerParams: WorkerParameters,
+        entryPoint: SummaryWorkerEntryPoint
+    ) : this(
+        context,
+        workerParams,
+        entryPoint.recordingRepository(),
+        entryPoint.summaryService()
+    )
+
+    @Suppress("unused")
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        context.workerEntryPoint<SummaryWorkerEntryPoint>()
+    )
+
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
+        private const val SUMMARY_WORK_NAME_PREFIX = "summary_generation_"
+
+        fun uniqueWorkName(recordingId: Long): String =
+            SUMMARY_WORK_NAME_PREFIX + recordingId
 
         fun createWorkRequest(recordingId: Long): OneTimeWorkRequest {
             val data = Data.Builder()
@@ -65,30 +104,33 @@ class SummaryGenerationWorker @AssistedInject constructor(
             var finalSummary = ""
             var finalActionItems = ""
             var finalKeyPoints = ""
+            var summaryCompleted = false
 
             summaryService.generateSummary(recording.transcript)
                 .onEach { response ->
-                    // Update partial results in database
                     finalTitle = response.title
                     finalSummary = response.summary
                     finalActionItems = response.actionItems.joinToString("\n")
                     finalKeyPoints = response.keyPoints.joinToString("\n")
 
-                    // Save progress
-                    if (response.title.isNotEmpty() &&
-                        response.summary.isNotEmpty() &&
+                    val hasCompleteSummary = response.title.isNotBlank() &&
+                        response.summary.isNotBlank() &&
                         response.actionItems.isNotEmpty() &&
                         response.keyPoints.isNotEmpty()
-                    ) {
-                        repository.updateSummary(
-                            recordingId,
-                            finalTitle,
-                            finalSummary,
-                            finalActionItems,
-                            finalKeyPoints,
+
+                    repository.updateSummary(
+                        recordingId,
+                        finalTitle,
+                        finalSummary,
+                        finalActionItems,
+                        finalKeyPoints,
+                        if (hasCompleteSummary) {
+                            summaryCompleted = true
                             RecordingStatus.SUMMARY_COMPLETE
-                        )
-                    }
+                        } else {
+                            RecordingStatus.GENERATING_SUMMARY
+                        }
+                    )
                 }
                 .catch { e ->
                     e.printStackTrace()
@@ -96,7 +138,12 @@ class SummaryGenerationWorker @AssistedInject constructor(
                 }
                 .collect()
 
-            Result.success()
+            if (summaryCompleted) {
+                Result.success()
+            } else {
+                repository.updateRecordingStatus(recordingId, RecordingStatus.SUMMARY_FAILED)
+                Result.failure()
+            }
 
         } catch (e: Exception) {
             e.printStackTrace()

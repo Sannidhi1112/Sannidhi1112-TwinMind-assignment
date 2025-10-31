@@ -2,13 +2,25 @@ package com.twinmind.voicerecorder.data.worker
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
-import androidx.work.*
+import androidx.work.BackoffPolicy
+import androidx.work.CoroutineWorker
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.Result
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
 import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
 import com.twinmind.voicerecorder.data.local.entity.TranscriptionStatus
 import com.twinmind.voicerecorder.data.remote.TranscriptionService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
+import com.twinmind.voicerecorder.di.workerEntryPoint
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -21,6 +33,31 @@ class TranscriptionWorker @AssistedInject constructor(
     private val repository: RecordingRepository,
     private val transcriptionService: TranscriptionService
 ) : CoroutineWorker(context, workerParams) {
+
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    internal interface TranscriptionWorkerEntryPoint {
+        fun recordingRepository(): RecordingRepository
+        fun transcriptionService(): TranscriptionService
+    }
+
+    private constructor(
+        context: Context,
+        workerParams: WorkerParameters,
+        entryPoint: TranscriptionWorkerEntryPoint
+    ) : this(
+        context,
+        workerParams,
+        entryPoint.recordingRepository(),
+        entryPoint.transcriptionService()
+    )
+
+    @Suppress("unused")
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        context.workerEntryPoint<TranscriptionWorkerEntryPoint>()
+    )
 
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
@@ -175,6 +212,10 @@ class TranscriptionWorker @AssistedInject constructor(
 
     private suspend fun startSummaryGeneration(recordingId: Long) {
         val workRequest = SummaryGenerationWorker.createWorkRequest(recordingId)
-        WorkManager.getInstance(applicationContext).enqueue(workRequest)
+        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            SummaryGenerationWorker.uniqueWorkName(recordingId),
+            ExistingWorkPolicy.REPLACE,
+            workRequest
+        )
     }
 }

@@ -1,5 +1,6 @@
 package com.twinmind.voicerecorder.presentation.summary
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,9 @@ import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
 import com.twinmind.voicerecorder.data.worker.SummaryGenerationWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import androidx.work.ExistingWorkPolicy
+import androidx.work.WorkManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,7 +29,8 @@ data class SummaryUiState(
 @HiltViewModel
 class SummaryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repository: RecordingRepository
+    private val repository: RecordingRepository,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val recordingId: Long = savedStateHandle.get<Long>("recordingId") ?: -1L
@@ -68,7 +73,11 @@ class SummaryViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = true, error = null) }
                 // Trigger summary generation again
                 repository.updateRecordingStatus(recordingId, RecordingStatus.TRANSCRIPTION_COMPLETE)
-                // TODO: Enqueue worker
+                WorkManager.getInstance(appContext).enqueueUniqueWork(
+                    SummaryGenerationWorker.uniqueWorkName(recordingId),
+                    ExistingWorkPolicy.REPLACE,
+                    SummaryGenerationWorker.createWorkRequest(recordingId)
+                )
             }
         }
     }

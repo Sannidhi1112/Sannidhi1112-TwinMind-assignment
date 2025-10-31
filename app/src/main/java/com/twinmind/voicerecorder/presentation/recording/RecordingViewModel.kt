@@ -2,6 +2,7 @@ package com.twinmind.voicerecorder.presentation.recording
 
 import android.app.Application
 import android.content.Intent
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
@@ -55,7 +56,7 @@ class RecordingViewModel @Inject constructor(
         val intent = Intent(context, RecordingService::class.java).apply {
             action = RecordingService.ACTION_START_RECORDING
         }
-        context.startForegroundService(intent)
+        ContextCompat.startForegroundService(context, intent)
 
         startTime = System.currentTimeMillis()
         _uiState.update {
