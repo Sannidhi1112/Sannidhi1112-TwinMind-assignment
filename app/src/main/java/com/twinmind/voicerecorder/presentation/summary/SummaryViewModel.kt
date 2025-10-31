@@ -33,6 +33,10 @@ class SummaryViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
+    companion object {
+        private const val SUMMARY_WORK_NAME_PREFIX = "summary_generation_"
+    }
+
     private val recordingId: Long = savedStateHandle.get<Long>("recordingId") ?: -1L
 
     private val _uiState = MutableStateFlow(SummaryUiState(isLoading = true))
@@ -74,7 +78,7 @@ class SummaryViewModel @Inject constructor(
                 // Trigger summary generation again
                 repository.updateRecordingStatus(recordingId, RecordingStatus.TRANSCRIPTION_COMPLETE)
                 WorkManager.getInstance(appContext).enqueueUniqueWork(
-                    SummaryGenerationWorker.uniqueWorkName(recordingId),
+                    SUMMARY_WORK_NAME_PREFIX + recordingId,
                     ExistingWorkPolicy.REPLACE,
                     SummaryGenerationWorker.createWorkRequest(recordingId)
                 )

@@ -5,7 +5,6 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.Data
-import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.Result
@@ -20,6 +19,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,6 +37,7 @@ class TranscriptionWorker @AssistedInject constructor(
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     internal interface TranscriptionWorkerEntryPoint {
+    interface TranscriptionWorkerEntryPoint {
         fun recordingRepository(): RecordingRepository
         fun transcriptionService(): TranscriptionService
     }
@@ -57,11 +58,41 @@ class TranscriptionWorker @AssistedInject constructor(
         context,
         workerParams,
         context.workerEntryPoint<TranscriptionWorkerEntryPoint>()
+        resolveEntryPoint(context)
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            TranscriptionWorkerEntryPoint::class.java
+        ).recordingRepository(),
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            TranscriptionWorkerEntryPoint::class.java
+        ).transcriptionService()
     )
 
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
+
+        private fun resolveEntryPoint(
+            context: Context
+        ): TranscriptionWorkerEntryPoint {
+            return EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                TranscriptionWorkerEntryPoint::class.java
+            )
+        private fun resolveDependencies(context: Context): Dependencies {
+            val entryPoint = EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                TranscriptionWorkerEntryPoint::class.java
+            )
+            return Dependencies(
+                repository = entryPoint.recordingRepository(),
+                transcriptionService = entryPoint.transcriptionService()
+            )
+        }
 
         fun createWorkRequest(recordingId: Long): OneTimeWorkRequest {
             val data = Data.Builder()
