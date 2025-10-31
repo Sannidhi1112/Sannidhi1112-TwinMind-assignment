@@ -34,6 +34,22 @@ class SummaryGenerationWorker @AssistedInject constructor(
         fun summaryService(): SummaryService
     }
 
+    private constructor(
+        context: Context,
+        workerParams: WorkerParameters,
+        entryPoint: SummaryWorkerEntryPoint
+    ) : this(
+        context,
+        workerParams,
+        entryPoint.recordingRepository(),
+        entryPoint.summaryService()
+    )
+
+    @Suppress("unused")
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        resolveEntryPoint(context)
     constructor(context: Context, workerParams: WorkerParameters) : this(
         context,
         workerParams,
@@ -51,6 +67,13 @@ class SummaryGenerationWorker @AssistedInject constructor(
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
 
+        private fun resolveEntryPoint(
+            context: Context
+        ): SummaryWorkerEntryPoint {
+            return EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                SummaryWorkerEntryPoint::class.java
+            )
         private fun resolveDependencies(context: Context): Dependencies {
             val entryPoint = EntryPointAccessors.fromApplication(
                 context.applicationContext,

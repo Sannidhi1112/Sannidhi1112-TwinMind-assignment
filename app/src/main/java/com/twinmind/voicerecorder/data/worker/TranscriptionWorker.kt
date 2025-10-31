@@ -33,6 +33,22 @@ class TranscriptionWorker @AssistedInject constructor(
         fun transcriptionService(): TranscriptionService
     }
 
+    private constructor(
+        context: Context,
+        workerParams: WorkerParameters,
+        entryPoint: TranscriptionWorkerEntryPoint
+    ) : this(
+        context,
+        workerParams,
+        entryPoint.recordingRepository(),
+        entryPoint.transcriptionService()
+    )
+
+    @Suppress("unused")
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        resolveEntryPoint(context)
     constructor(context: Context, workerParams: WorkerParameters) : this(
         context,
         workerParams,
@@ -50,6 +66,13 @@ class TranscriptionWorker @AssistedInject constructor(
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
 
+        private fun resolveEntryPoint(
+            context: Context
+        ): TranscriptionWorkerEntryPoint {
+            return EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                TranscriptionWorkerEntryPoint::class.java
+            )
         private fun resolveDependencies(context: Context): Dependencies {
             val entryPoint = EntryPointAccessors.fromApplication(
                 context.applicationContext,
