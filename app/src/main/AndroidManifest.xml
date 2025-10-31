@@ -59,7 +59,7 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
-        <!-- Disable automatic WorkManager initialization (using custom Configuration.Provider) -->
+        <!-- WorkManager Workers - Disabled auto-init to use Hilt -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
