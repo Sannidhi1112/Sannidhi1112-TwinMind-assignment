@@ -34,26 +34,17 @@ class SummaryGenerationWorker @AssistedInject constructor(
         fun summaryService(): SummaryService
     }
 
-    private data class Dependencies(
-        val repository: RecordingRepository,
-        val summaryService: SummaryService
-    )
-
-    private constructor(
-        context: Context,
-        workerParams: WorkerParameters,
-        dependencies: Dependencies
-    ) : this(
-        context,
-        workerParams,
-        dependencies.repository,
-        dependencies.summaryService
-    )
-
     constructor(context: Context, workerParams: WorkerParameters) : this(
         context,
         workerParams,
-        resolveDependencies(context)
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            SummaryWorkerEntryPoint::class.java
+        ).recordingRepository(),
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            SummaryWorkerEntryPoint::class.java
+        ).summaryService()
     )
 
     companion object {

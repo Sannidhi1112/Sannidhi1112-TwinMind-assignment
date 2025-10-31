@@ -33,26 +33,17 @@ class TranscriptionWorker @AssistedInject constructor(
         fun transcriptionService(): TranscriptionService
     }
 
-    private data class Dependencies(
-        val repository: RecordingRepository,
-        val transcriptionService: TranscriptionService
-    )
-
-    private constructor(
-        context: Context,
-        workerParams: WorkerParameters,
-        dependencies: Dependencies
-    ) : this(
-        context,
-        workerParams,
-        dependencies.repository,
-        dependencies.transcriptionService
-    )
-
     constructor(context: Context, workerParams: WorkerParameters) : this(
         context,
         workerParams,
-        resolveDependencies(context)
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            TranscriptionWorkerEntryPoint::class.java
+        ).recordingRepository(),
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            TranscriptionWorkerEntryPoint::class.java
+        ).transcriptionService()
     )
 
     companion object {
