@@ -4,15 +4,25 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 @HiltAndroidApp
-class VoiceRecorderApp : Application() {
+class VoiceRecorderApp : Application(), Configuration.Provider {
+
+    @Inject
+    lateinit var workerFactory: androidx.hilt.work.HiltWorkerFactory
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
     }
+
+    override fun getWorkManagerConfiguration(): Configuration =
+        Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
