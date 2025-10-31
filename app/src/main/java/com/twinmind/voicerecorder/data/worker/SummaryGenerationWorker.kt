@@ -75,6 +75,10 @@ class SummaryGenerationWorker @AssistedInject constructor(
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
+        private const val SUMMARY_WORK_NAME_PREFIX = "summary_generation_"
+
+        fun uniqueWorkName(recordingId: Long): String =
+            SUMMARY_WORK_NAME_PREFIX + recordingId
 
         private fun resolveEntryPoint(
             context: Context

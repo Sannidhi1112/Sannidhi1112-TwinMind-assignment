@@ -243,6 +243,10 @@ class TranscriptionWorker @AssistedInject constructor(
 
     private suspend fun startSummaryGeneration(recordingId: Long) {
         val workRequest = SummaryGenerationWorker.createWorkRequest(recordingId)
-        WorkManager.getInstance(applicationContext).enqueue(workRequest)
+        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            SummaryGenerationWorker.uniqueWorkName(recordingId),
+            ExistingWorkPolicy.REPLACE,
+            workRequest
+        )
     }
 }
