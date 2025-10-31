@@ -17,6 +17,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -36,6 +37,7 @@ class SummaryGenerationWorker @AssistedInject constructor(
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     internal interface SummaryWorkerEntryPoint {
+    interface SummaryWorkerEntryPoint {
         fun recordingRepository(): RecordingRepository
         fun summaryService(): SummaryService
     }
@@ -56,11 +58,41 @@ class SummaryGenerationWorker @AssistedInject constructor(
         context,
         workerParams,
         context.workerEntryPoint<SummaryWorkerEntryPoint>()
+        resolveEntryPoint(context)
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            SummaryWorkerEntryPoint::class.java
+        ).recordingRepository(),
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            SummaryWorkerEntryPoint::class.java
+        ).summaryService()
     )
 
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
+
+        private fun resolveEntryPoint(
+            context: Context
+        ): SummaryWorkerEntryPoint {
+            return EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                SummaryWorkerEntryPoint::class.java
+            )
+        private fun resolveDependencies(context: Context): Dependencies {
+            val entryPoint = EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                SummaryWorkerEntryPoint::class.java
+            )
+            return Dependencies(
+                repository = entryPoint.recordingRepository(),
+                summaryService = entryPoint.summaryService()
+            )
+        }
 
         fun createWorkRequest(recordingId: Long): OneTimeWorkRequest {
             val data = Data.Builder()
