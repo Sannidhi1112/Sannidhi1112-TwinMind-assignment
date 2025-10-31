@@ -20,11 +20,11 @@ class TranscriptionService @Inject constructor() {
      */
     suspend fun transcribeAudio(audioFile: File): Result<String> {
         return try {
-            // Simulate API call delay (2-4 seconds)
-            delay(Random.nextLong(2000, 4000))
+            // Simulate API call delay (0.5-1 seconds for faster testing)
+            delay(Random.nextLong(500, 1000))
 
-            // Simulate occasional failures (10% failure rate)
-            if (Random.nextFloat() < 0.1f) {
+            // Simulate occasional failures (5% failure rate)
+            if (Random.nextFloat() < 0.05f) {
                 return Result.failure(Exception("Transcription API error"))
             }
 

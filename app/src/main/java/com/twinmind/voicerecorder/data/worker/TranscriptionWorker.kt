@@ -33,11 +33,7 @@ class TranscriptionWorker @AssistedInject constructor(
 
             return OneTimeWorkRequestBuilder<TranscriptionWorker>()
                 .setInputData(data)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                )
+                // No network constraints for mock service - will work offline
                 .setBackoffCriteria(
                     BackoffPolicy.EXPONENTIAL,
                     10,
