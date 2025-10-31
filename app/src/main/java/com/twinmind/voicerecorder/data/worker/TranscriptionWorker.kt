@@ -2,11 +2,19 @@ package com.twinmind.voicerecorder.data.worker
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
-import androidx.work.*
+import androidx.work.BackoffPolicy
+import androidx.work.CoroutineWorker
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.Result
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
 import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
 import com.twinmind.voicerecorder.data.local.entity.TranscriptionStatus
 import com.twinmind.voicerecorder.data.remote.TranscriptionService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
+import com.twinmind.voicerecorder.di.workerEntryPoint
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.EntryPoint
@@ -28,6 +36,7 @@ class TranscriptionWorker @AssistedInject constructor(
 
     @EntryPoint
     @InstallIn(SingletonComponent::class)
+    internal interface TranscriptionWorkerEntryPoint {
     interface TranscriptionWorkerEntryPoint {
         fun recordingRepository(): RecordingRepository
         fun transcriptionService(): TranscriptionService
@@ -48,6 +57,7 @@ class TranscriptionWorker @AssistedInject constructor(
     constructor(context: Context, workerParams: WorkerParameters) : this(
         context,
         workerParams,
+        context.workerEntryPoint<TranscriptionWorkerEntryPoint>()
         resolveEntryPoint(context)
     constructor(context: Context, workerParams: WorkerParameters) : this(
         context,

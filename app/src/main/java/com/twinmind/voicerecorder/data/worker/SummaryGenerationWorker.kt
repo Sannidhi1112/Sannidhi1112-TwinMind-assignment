@@ -2,10 +2,17 @@ package com.twinmind.voicerecorder.data.worker
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
-import androidx.work.*
+import androidx.work.BackoffPolicy
+import androidx.work.CoroutineWorker
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.Result
+import androidx.work.WorkerParameters
 import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
 import com.twinmind.voicerecorder.data.remote.SummaryService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
+import com.twinmind.voicerecorder.di.workerEntryPoint
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.EntryPoint
@@ -29,6 +36,7 @@ class SummaryGenerationWorker @AssistedInject constructor(
 
     @EntryPoint
     @InstallIn(SingletonComponent::class)
+    internal interface SummaryWorkerEntryPoint {
     interface SummaryWorkerEntryPoint {
         fun recordingRepository(): RecordingRepository
         fun summaryService(): SummaryService
@@ -49,6 +57,7 @@ class SummaryGenerationWorker @AssistedInject constructor(
     constructor(context: Context, workerParams: WorkerParameters) : this(
         context,
         workerParams,
+        context.workerEntryPoint<SummaryWorkerEntryPoint>()
         resolveEntryPoint(context)
     constructor(context: Context, workerParams: WorkerParameters) : this(
         context,
