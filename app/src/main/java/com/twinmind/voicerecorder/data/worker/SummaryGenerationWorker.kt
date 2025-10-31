@@ -2,12 +2,22 @@ package com.twinmind.voicerecorder.data.worker
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
-import androidx.work.*
+import androidx.work.BackoffPolicy
+import androidx.work.CoroutineWorker
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.Result
+import androidx.work.WorkerParameters
 import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
 import com.twinmind.voicerecorder.data.remote.SummaryService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
+import com.twinmind.voicerecorder.di.workerEntryPoint
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -22,6 +32,31 @@ class SummaryGenerationWorker @AssistedInject constructor(
     private val repository: RecordingRepository,
     private val summaryService: SummaryService
 ) : CoroutineWorker(context, workerParams) {
+
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    internal interface SummaryWorkerEntryPoint {
+        fun recordingRepository(): RecordingRepository
+        fun summaryService(): SummaryService
+    }
+
+    private constructor(
+        context: Context,
+        workerParams: WorkerParameters,
+        entryPoint: SummaryWorkerEntryPoint
+    ) : this(
+        context,
+        workerParams,
+        entryPoint.recordingRepository(),
+        entryPoint.summaryService()
+    )
+
+    @Suppress("unused")
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        context.workerEntryPoint<SummaryWorkerEntryPoint>()
+    )
 
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
