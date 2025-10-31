@@ -132,30 +132,33 @@ class SummaryGenerationWorker @AssistedInject constructor(
             var finalSummary = ""
             var finalActionItems = ""
             var finalKeyPoints = ""
+            var summaryCompleted = false
 
             summaryService.generateSummary(recording.transcript)
                 .onEach { response ->
-                    // Update partial results in database
                     finalTitle = response.title
                     finalSummary = response.summary
                     finalActionItems = response.actionItems.joinToString("\n")
                     finalKeyPoints = response.keyPoints.joinToString("\n")
 
-                    // Save progress
-                    if (response.title.isNotEmpty() &&
-                        response.summary.isNotEmpty() &&
+                    val hasCompleteSummary = response.title.isNotBlank() &&
+                        response.summary.isNotBlank() &&
                         response.actionItems.isNotEmpty() &&
                         response.keyPoints.isNotEmpty()
-                    ) {
-                        repository.updateSummary(
-                            recordingId,
-                            finalTitle,
-                            finalSummary,
-                            finalActionItems,
-                            finalKeyPoints,
+
+                    repository.updateSummary(
+                        recordingId,
+                        finalTitle,
+                        finalSummary,
+                        finalActionItems,
+                        finalKeyPoints,
+                        if (hasCompleteSummary) {
+                            summaryCompleted = true
                             RecordingStatus.SUMMARY_COMPLETE
-                        )
-                    }
+                        } else {
+                            RecordingStatus.GENERATING_SUMMARY
+                        }
+                    )
                 }
                 .catch { e ->
                     e.printStackTrace()
@@ -163,7 +166,12 @@ class SummaryGenerationWorker @AssistedInject constructor(
                 }
                 .collect()
 
-            Result.success()
+            if (summaryCompleted) {
+                Result.success()
+            } else {
+                repository.updateRecordingStatus(recordingId, RecordingStatus.SUMMARY_FAILED)
+                Result.failure()
+            }
 
         } catch (e: Exception) {
             e.printStackTrace()
