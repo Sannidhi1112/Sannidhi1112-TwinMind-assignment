@@ -50,6 +50,17 @@ class SummaryGenerationWorker @AssistedInject constructor(
         context,
         workerParams,
         resolveEntryPoint(context)
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            SummaryWorkerEntryPoint::class.java
+        ).recordingRepository(),
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            SummaryWorkerEntryPoint::class.java
+        ).summaryService()
     )
 
     companion object {
@@ -62,6 +73,15 @@ class SummaryGenerationWorker @AssistedInject constructor(
             return EntryPointAccessors.fromApplication(
                 context.applicationContext,
                 SummaryWorkerEntryPoint::class.java
+            )
+        private fun resolveDependencies(context: Context): Dependencies {
+            val entryPoint = EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                SummaryWorkerEntryPoint::class.java
+            )
+            return Dependencies(
+                repository = entryPoint.recordingRepository(),
+                summaryService = entryPoint.summaryService()
             )
         }
 
