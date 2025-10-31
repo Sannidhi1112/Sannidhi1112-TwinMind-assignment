@@ -9,6 +9,10 @@ import com.twinmind.voicerecorder.data.remote.TranscriptionService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -22,9 +26,49 @@ class TranscriptionWorker @AssistedInject constructor(
     private val transcriptionService: TranscriptionService
 ) : CoroutineWorker(context, workerParams) {
 
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface TranscriptionWorkerEntryPoint {
+        fun recordingRepository(): RecordingRepository
+        fun transcriptionService(): TranscriptionService
+    }
+
+    private data class Dependencies(
+        val repository: RecordingRepository,
+        val transcriptionService: TranscriptionService
+    )
+
+    private constructor(
+        context: Context,
+        workerParams: WorkerParameters,
+        dependencies: Dependencies
+    ) : this(
+        context,
+        workerParams,
+        dependencies.repository,
+        dependencies.transcriptionService
+    )
+
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        resolveDependencies(context)
+    )
+
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
+
+        private fun resolveDependencies(context: Context): Dependencies {
+            val entryPoint = EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                TranscriptionWorkerEntryPoint::class.java
+            )
+            return Dependencies(
+                repository = entryPoint.recordingRepository(),
+                transcriptionService = entryPoint.transcriptionService()
+            )
+        }
 
         fun createWorkRequest(recordingId: Long): OneTimeWorkRequest {
             val data = Data.Builder()
