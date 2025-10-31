@@ -8,6 +8,10 @@ import com.twinmind.voicerecorder.data.remote.SummaryService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -23,9 +27,43 @@ class SummaryGenerationWorker @AssistedInject constructor(
     private val summaryService: SummaryService
 ) : CoroutineWorker(context, workerParams) {
 
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface SummaryWorkerEntryPoint {
+        fun recordingRepository(): RecordingRepository
+        fun summaryService(): SummaryService
+    }
+
+    private constructor(
+        context: Context,
+        workerParams: WorkerParameters,
+        entryPoint: SummaryWorkerEntryPoint
+    ) : this(
+        context,
+        workerParams,
+        entryPoint.recordingRepository(),
+        entryPoint.summaryService()
+    )
+
+    @Suppress("unused")
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        resolveEntryPoint(context)
+    )
+
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
+
+        private fun resolveEntryPoint(
+            context: Context
+        ): SummaryWorkerEntryPoint {
+            return EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                SummaryWorkerEntryPoint::class.java
+            )
+        }
 
         fun createWorkRequest(recordingId: Long): OneTimeWorkRequest {
             val data = Data.Builder()
