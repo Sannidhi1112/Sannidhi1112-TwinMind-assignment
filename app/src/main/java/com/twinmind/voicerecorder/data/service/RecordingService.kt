@@ -33,6 +33,7 @@ import com.twinmind.voicerecorder.data.repository.RecordingRepository
 import com.twinmind.voicerecorder.presentation.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import kotlin.coroutines.coroutineContext
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
@@ -245,7 +246,7 @@ class RecordingService : Service() {
         var silentStartTime: Long? = null
         var lastAmplitudeCheckTime = System.currentTimeMillis()
 
-        while (isActive && isRecording) {
+        while (coroutineContext.isActive && isRecording) {
             if (isPaused) {
                 delay(100)
                 continue
