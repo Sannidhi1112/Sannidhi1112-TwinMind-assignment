@@ -7,22 +7,22 @@ import com.twinmind.voicerecorder.data.local.entity.TranscriptionStatus
 class Converters {
 
     @TypeConverter
-    fun fromRecordingStatus(status: RecordingStatus): String {
-        return status.name
+    fun fromRecordingStatus(value: RecordingStatus): String {
+        return value.name
     }
 
     @TypeConverter
-    fun toRecordingStatus(status: String): RecordingStatus {
-        return RecordingStatus.valueOf(status)
+    fun toRecordingStatus(value: String): RecordingStatus {
+        return RecordingStatus.valueOf(value)
     }
 
     @TypeConverter
-    fun fromTranscriptionStatus(status: TranscriptionStatus): String {
-        return status.name
+    fun fromTranscriptionStatus(value: TranscriptionStatus): String {
+        return value.name
     }
 
     @TypeConverter
-    fun toTranscriptionStatus(status: String): TranscriptionStatus {
-        return TranscriptionStatus.valueOf(status)
+    fun toTranscriptionStatus(value: String): TranscriptionStatus {
+        return TranscriptionStatus.valueOf(value)
     }
 }

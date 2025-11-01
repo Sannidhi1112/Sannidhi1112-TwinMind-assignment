@@ -2,25 +2,13 @@ package com.twinmind.voicerecorder.data.worker
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
-import androidx.work.BackoffPolicy
-import androidx.work.CoroutineWorker
-import androidx.work.Data
-import androidx.work.OneTimeWorkRequest
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.Result
-import androidx.work.WorkManager
-import androidx.work.WorkerParameters
+import androidx.work.*
 import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
 import com.twinmind.voicerecorder.data.local.entity.TranscriptionStatus
 import com.twinmind.voicerecorder.data.remote.TranscriptionService
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
-import com.twinmind.voicerecorder.di.workerEntryPoint
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -28,71 +16,15 @@ import java.util.concurrent.TimeUnit
 
 @HiltWorker
 class TranscriptionWorker @AssistedInject constructor(
-    @Assisted context: Context,
-    @Assisted workerParams: WorkerParameters,
+    @Assisted private val appContext: Context,
+    @Assisted private val workerParams: WorkerParameters,
     private val repository: RecordingRepository,
     private val transcriptionService: TranscriptionService
-) : CoroutineWorker(context, workerParams) {
-
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    internal interface TranscriptionWorkerEntryPoint {
-    interface TranscriptionWorkerEntryPoint {
-        fun recordingRepository(): RecordingRepository
-        fun transcriptionService(): TranscriptionService
-    }
-
-    private constructor(
-        context: Context,
-        workerParams: WorkerParameters,
-        entryPoint: TranscriptionWorkerEntryPoint
-    ) : this(
-        context,
-        workerParams,
-        entryPoint.recordingRepository(),
-        entryPoint.transcriptionService()
-    )
-
-    @Suppress("unused")
-    constructor(context: Context, workerParams: WorkerParameters) : this(
-        context,
-        workerParams,
-        context.workerEntryPoint<TranscriptionWorkerEntryPoint>()
-        resolveEntryPoint(context)
-    constructor(context: Context, workerParams: WorkerParameters) : this(
-        context,
-        workerParams,
-        EntryPointAccessors.fromApplication(
-            context.applicationContext,
-            TranscriptionWorkerEntryPoint::class.java
-        ).recordingRepository(),
-        EntryPointAccessors.fromApplication(
-            context.applicationContext,
-            TranscriptionWorkerEntryPoint::class.java
-        ).transcriptionService()
-    )
+) : CoroutineWorker(appContext, workerParams) {
 
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
         const val MAX_RETRIES = 3
-
-        private fun resolveEntryPoint(
-            context: Context
-        ): TranscriptionWorkerEntryPoint {
-            return EntryPointAccessors.fromApplication(
-                context.applicationContext,
-                TranscriptionWorkerEntryPoint::class.java
-            )
-        private fun resolveDependencies(context: Context): Dependencies {
-            val entryPoint = EntryPointAccessors.fromApplication(
-                context.applicationContext,
-                TranscriptionWorkerEntryPoint::class.java
-            )
-            return Dependencies(
-                repository = entryPoint.recordingRepository(),
-                transcriptionService = entryPoint.transcriptionService()
-            )
-        }
 
         fun createWorkRequest(recordingId: Long): OneTimeWorkRequest {
             val data = Data.Builder()
@@ -101,12 +33,12 @@ class TranscriptionWorker @AssistedInject constructor(
 
             return OneTimeWorkRequestBuilder<TranscriptionWorker>()
                 .setInputData(data)
-                // No network constraints for mock service - will work offline
                 .setBackoffCriteria(
                     BackoffPolicy.EXPONENTIAL,
                     10,
                     TimeUnit.SECONDS
                 )
+                .addTag("transcription_$recordingId")
                 .build()
         }
     }
@@ -126,6 +58,7 @@ class TranscriptionWorker @AssistedInject constructor(
                 .sortedBy { it.chunkIndex }
 
             if (chunks.isEmpty()) {
+                repository.updateError(recordingId, "No audio chunks found")
                 return@withContext Result.failure()
             }
 
@@ -134,6 +67,7 @@ class TranscriptionWorker @AssistedInject constructor(
 
             // Transcribe each chunk
             for (chunk in chunks) {
+                // Skip already transcribed chunks
                 if (chunk.transcriptionStatus == TranscriptionStatus.COMPLETED) {
                     successCount++
                     continue
@@ -155,6 +89,7 @@ class TranscriptionWorker @AssistedInject constructor(
                         TranscriptionStatus.FAILED,
                         null
                     )
+                    repository.updateChunkError(chunk.id, "Audio file not found")
                     continue
                 }
 
@@ -188,6 +123,7 @@ class TranscriptionWorker @AssistedInject constructor(
                                 TranscriptionStatus.FAILED,
                                 null
                             )
+                            repository.updateChunkError(chunk.id, error.message ?: "Transcription failed")
                             failureCount++
                         }
                     }
@@ -202,17 +138,25 @@ class TranscriptionWorker @AssistedInject constructor(
                 .mapNotNull { it.transcriptionText }
                 .joinToString(" ")
 
-            val transcribedCount = allChunks.count { it.transcriptionStatus == TranscriptionStatus.COMPLETED }
+            val transcribedCount = allChunks.count {
+                it.transcriptionStatus == TranscriptionStatus.COMPLETED
+            }
 
             // Update recording with transcript
             if (completeTranscript.isNotEmpty()) {
+                val finalStatus = if (failureCount == 0) {
+                    RecordingStatus.TRANSCRIPTION_COMPLETE
+                } else {
+                    RecordingStatus.TRANSCRIPTION_FAILED
+                }
+
                 repository.updateTranscript(
                     recordingId,
                     completeTranscript,
                     transcribedCount,
-                    if (failureCount == 0) RecordingStatus.TRANSCRIPTION_COMPLETE
-                    else RecordingStatus.TRANSCRIPTION_FAILED
+                    if (failureCount == 0) TranscriptionStatus.COMPLETED else TranscriptionStatus.FAILED
                 )
+                repository.updateRecordingStatus(recordingId, finalStatus)
 
                 // Start summary generation if transcription is complete
                 if (failureCount == 0) {
@@ -222,12 +166,13 @@ class TranscriptionWorker @AssistedInject constructor(
                 return@withContext Result.success()
             }
 
-            // Retry if there were failures
+            // Retry if there were failures and we haven't exceeded max attempts
             if (failureCount > 0 && runAttemptCount < MAX_RETRIES) {
                 return@withContext Result.retry()
             }
 
             repository.updateRecordingStatus(recordingId, RecordingStatus.TRANSCRIPTION_FAILED)
+            repository.updateError(recordingId, "Transcription failed for all chunks")
             Result.failure()
 
         } catch (e: Exception) {
@@ -236,17 +181,14 @@ class TranscriptionWorker @AssistedInject constructor(
                 Result.retry()
             } else {
                 repository.updateRecordingStatus(recordingId, RecordingStatus.TRANSCRIPTION_FAILED)
+                repository.updateError(recordingId, e.message ?: "Transcription error")
                 Result.failure()
             }
         }
     }
 
-    private suspend fun startSummaryGeneration(recordingId: Long) {
+    private fun startSummaryGeneration(recordingId: Long) {
         val workRequest = SummaryGenerationWorker.createWorkRequest(recordingId)
-        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
-            SummaryGenerationWorker.uniqueWorkName(recordingId),
-            ExistingWorkPolicy.REPLACE,
-            workRequest
-        )
+        WorkManager.getInstance(appContext).enqueue(workRequest)
     }
 }

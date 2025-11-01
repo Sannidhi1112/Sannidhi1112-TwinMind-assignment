@@ -7,37 +7,25 @@ import com.twinmind.voicerecorder.data.repository.RecordingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class DashboardUiState(
-    val recordings: List<Recording> = emptyList(),
-    val isLoading: Boolean = false
-)
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: RecordingRepository
 ) : ViewModel() {
 
-    val uiState: StateFlow<DashboardUiState> = repository.getAllRecordings()
-        .map { recordings ->
-            DashboardUiState(
-                recordings = recordings,
-                isLoading = false
-            )
-        }
+    val recordings: StateFlow<List<Recording>> = repository.getAllRecordings()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = DashboardUiState(isLoading = true)
+            initialValue = emptyList()
         )
 
-    fun deleteRecording(recording: Recording) {
+    fun deleteRecording(id: Long) {
         viewModelScope.launch {
-            repository.deleteRecording(recording)
+            repository.deleteRecording(id)
         }
     }
 }

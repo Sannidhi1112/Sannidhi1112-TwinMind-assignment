@@ -10,29 +10,36 @@ data class Recording(
     val title: String,
     val startTime: Long,
     val endTime: Long? = null,
-    val duration: Long = 0, // in milliseconds
-    val status: RecordingStatus,
-    val totalChunks: Int = 0,
-    val transcribedChunks: Int = 0,
+    val duration: Long = 0,
+    val status: RecordingStatus = RecordingStatus.RECORDING,
+    val transcriptionStatus: TranscriptionStatus = TranscriptionStatus.PENDING,
     val transcript: String? = null,
     val summary: String? = null,
     val summaryTitle: String? = null,
-    val summaryContent: String? = null,
-    val actionItems: String? = null,
-    val keyPoints: String? = null,
-    val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val summaryActionItems: String? = null,
+    val summaryKeyPoints: String? = null,
+    val totalChunks: Int = 0,
+    val transcribedChunks: Int = 0,
+    val pauseReason: String? = null,
+    val errorMessage: String? = null
 )
 
 enum class RecordingStatus {
     RECORDING,
-    PAUSED_CALL,
-    PAUSED_AUDIO_FOCUS,
+    PAUSED,
     STOPPED,
     TRANSCRIBING,
     TRANSCRIPTION_COMPLETE,
     TRANSCRIPTION_FAILED,
     GENERATING_SUMMARY,
     SUMMARY_COMPLETE,
-    SUMMARY_FAILED
+    SUMMARY_FAILED,
+    COMPLETED
+}
+
+enum class TranscriptionStatus {
+    PENDING,
+    IN_PROGRESS,
+    COMPLETED,
+    FAILED
 }

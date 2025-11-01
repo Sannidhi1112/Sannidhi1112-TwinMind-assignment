@@ -17,4 +17,8 @@ import com.twinmind.voicerecorder.data.local.entity.Recording
 abstract class VoiceRecorderDatabase : RoomDatabase() {
     abstract fun recordingDao(): RecordingDao
     abstract fun audioChunkDao(): AudioChunkDao
+
+    companion object {
+        const val DATABASE_NAME = "voice_recorder_db"
+    }
 }

@@ -22,7 +22,7 @@ object DatabaseModule {
         return Room.databaseBuilder(
             context,
             VoiceRecorderDatabase::class.java,
-            "voice_recorder_database"
+            VoiceRecorderDatabase.DATABASE_NAME
         )
             .fallbackToDestructiveMigration()
             .build()

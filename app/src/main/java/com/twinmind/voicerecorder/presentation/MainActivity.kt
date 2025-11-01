@@ -7,9 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.navigation.compose.rememberNavController
-import com.twinmind.voicerecorder.presentation.navigation.VoiceRecorderNavHost
-import com.twinmind.voicerecorder.presentation.theme.VoiceRecorderTheme
+import com.twinmind.voicerecorder.presentation.navigation.Navigation
+import com.twinmind.voicerecorder.presentation.theme.VoiceRecorderAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -17,13 +16,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            VoiceRecorderTheme {
+            VoiceRecorderAppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val navController = rememberNavController()
-                    VoiceRecorderNavHost(navController = navController)
+                    Navigation()
                 }
             }
         }

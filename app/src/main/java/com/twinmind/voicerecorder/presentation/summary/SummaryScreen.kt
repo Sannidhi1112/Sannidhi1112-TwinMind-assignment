@@ -6,27 +6,29 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SummaryScreen(
+    recordingId: Long,
     onNavigateBack: () -> Unit,
     viewModel: SummaryViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val recording by viewModel.recording.collectAsState()
+
+    LaunchedEffect(recordingId) {
+        viewModel.loadRecording(recordingId)
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Meeting Summary") },
+                title = { Text("Summary") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -34,179 +36,132 @@ fun SummaryScreen(
                 }
             )
         }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when {
-                uiState.isLoading -> {
-                    LoadingState(modifier = Modifier.align(Alignment.Center))
+    ) { padding ->
+        recording?.let { rec ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Title
+                Text(
+                    text = rec.summaryTitle ?: rec.title,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+
+                // Status
+                when (rec.status) {
+                    RecordingStatus.TRANSCRIBING -> {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text("Transcribing audio...")
+                    }
+                    RecordingStatus.GENERATING_SUMMARY -> {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text("Generating summary...")
+                    }
+                    RecordingStatus.TRANSCRIPTION_FAILED,
+                    RecordingStatus.SUMMARY_FAILED -> {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Text(
+                                text = rec.errorMessage ?: "An error occurred",
+                                modifier = Modifier.padding(16.dp),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                    else -> {}
                 }
-                uiState.error != null -> {
-                    ErrorState(
-                        error = uiState.error!!,
-                        onRetry = { viewModel.retry() },
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+
+                // Transcript
+                if (!rec.transcript.isNullOrEmpty()) {
+                    Card {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Transcript",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = rec.transcript ?: "",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
                 }
-                else -> {
-                    SummaryContent(uiState = uiState)
+
+                // Summary
+                if (!rec.summary.isNullOrEmpty()) {
+                    Card {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Summary",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = rec.summary ?: "",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+
+                // Action Items
+                if (!rec.summaryActionItems.isNullOrEmpty()) {
+                    Card {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Action Items",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            rec.summaryActionItems?.split("\n")?.forEach { item ->
+                                if (item.isNotBlank()) {
+                                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                                        Text("• ", style = MaterialTheme.typography.bodyMedium)
+                                        Text(item, style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Key Points
+                if (!rec.summaryKeyPoints.isNullOrEmpty()) {
+                    Card {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Key Points",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            rec.summaryKeyPoints?.split("\n")?.forEach { point ->
+                                if (point.isNotBlank()) {
+                                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                                        Text("• ", style = MaterialTheme.typography.bodyMedium)
+                                        Text(point, style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun LoadingState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        CircularProgressIndicator()
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Generating summary...",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun ErrorState(
-    error: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = error,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.error
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry) {
-            Text("Retry")
-        }
-    }
-}
-
-@Composable
-private fun SummaryContent(uiState: SummaryUiState) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        // Title Section
-        if (uiState.title.isNotEmpty()) {
-            SummarySection(
-                title = "Title",
-                content = {
-                    Text(
-                        text = uiState.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            )
-        }
-
-        // Summary Section
-        if (uiState.summary.isNotEmpty()) {
-            SummarySection(
-                title = "Summary",
-                content = {
-                    Text(
-                        text = uiState.summary,
-                        style = MaterialTheme.typography.bodyLarge,
-                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
-                    )
-                }
-            )
-        }
-
-        // Action Items Section
-        if (uiState.actionItems.isNotEmpty()) {
-            SummarySection(
-                title = "Action Items",
-                content = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        uiState.actionItems.forEach { item ->
-                            BulletPoint(text = item)
-                        }
-                    }
-                }
-            )
-        }
-
-        // Key Points Section
-        if (uiState.keyPoints.isNotEmpty()) {
-            SummarySection(
-                title = "Key Points",
-                content = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        uiState.keyPoints.forEach { point ->
-                            BulletPoint(text = point)
-                        }
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun SummarySection(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
+        } ?: Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+                .fillMaxSize()
+                .padding(padding),
+            contentAlignment = androidx.compose.ui.Alignment.Center
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            content()
+            CircularProgressIndicator()
         }
-    }
-}
-
-@Composable
-private fun BulletPoint(text: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "•",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
     }
 }

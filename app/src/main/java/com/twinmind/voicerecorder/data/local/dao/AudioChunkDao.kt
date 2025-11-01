@@ -17,17 +17,8 @@ interface AudioChunkDao {
     @Query("SELECT * FROM audio_chunks WHERE id = :id")
     suspend fun getChunkById(id: Long): AudioChunk?
 
-    @Query("SELECT * FROM audio_chunks WHERE recordingId = :recordingId AND transcriptionStatus = :status ORDER BY chunkIndex ASC")
+    @Query("SELECT * FROM audio_chunks WHERE recordingId = :recordingId AND transcriptionStatus = :status")
     suspend fun getChunksByStatus(recordingId: Long, status: TranscriptionStatus): List<AudioChunk>
-
-    @Query("SELECT * FROM audio_chunks WHERE transcriptionStatus = :status ORDER BY createdAt ASC LIMIT :limit")
-    suspend fun getPendingChunks(status: TranscriptionStatus = TranscriptionStatus.PENDING, limit: Int = 10): List<AudioChunk>
-
-    @Query("SELECT COUNT(*) FROM audio_chunks WHERE recordingId = :recordingId")
-    suspend fun getChunkCountByRecordingId(recordingId: Long): Int
-
-    @Query("SELECT COUNT(*) FROM audio_chunks WHERE recordingId = :recordingId AND transcriptionStatus = :status")
-    suspend fun getChunkCountByStatus(recordingId: Long, status: TranscriptionStatus): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChunk(chunk: AudioChunk): Long
@@ -36,10 +27,16 @@ interface AudioChunkDao {
     suspend fun updateChunk(chunk: AudioChunk)
 
     @Query("UPDATE audio_chunks SET transcriptionStatus = :status, transcriptionText = :text WHERE id = :id")
-    suspend fun updateChunkTranscription(id: Long, status: TranscriptionStatus, text: String?)
+    suspend fun updateTranscription(id: Long, status: TranscriptionStatus, text: String?)
 
     @Query("UPDATE audio_chunks SET transcriptionRetries = transcriptionRetries + 1 WHERE id = :id")
     suspend fun incrementRetries(id: Long)
+
+    @Query("UPDATE audio_chunks SET errorMessage = :error WHERE id = :id")
+    suspend fun updateError(id: Long, error: String)
+
+    @Query("SELECT COUNT(*) FROM audio_chunks WHERE recordingId = :recordingId")
+    suspend fun getChunkCount(recordingId: Long): Int
 
     @Delete
     suspend fun deleteChunk(chunk: AudioChunk)

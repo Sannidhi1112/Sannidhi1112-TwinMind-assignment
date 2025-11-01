@@ -1,10 +1,10 @@
 package com.twinmind.voicerecorder.presentation.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.twinmind.voicerecorder.presentation.dashboard.DashboardScreen
 import com.twinmind.voicerecorder.presentation.recording.RecordingScreen
@@ -19,9 +19,9 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun VoiceRecorderNavHost(
-    navController: NavHostController
-) {
+fun Navigation() {
+    val navController = rememberNavController()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Dashboard.route
@@ -48,12 +48,12 @@ fun VoiceRecorderNavHost(
         composable(
             route = Screen.Summary.route,
             arguments = listOf(
-                navArgument("recordingId") {
-                    type = NavType.LongType
-                }
+                navArgument("recordingId") { type = NavType.LongType }
             )
-        ) {
+        ) { backStackEntry ->
+            val recordingId = backStackEntry.arguments?.getLong("recordingId") ?: return@composable
             SummaryScreen(
+                recordingId = recordingId,
                 onNavigateBack = {
                     navController.popBackStack()
                 }

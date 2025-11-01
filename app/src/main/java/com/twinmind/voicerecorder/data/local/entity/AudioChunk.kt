@@ -15,7 +15,7 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("recordingId"), Index("chunkIndex")]
+    indices = [Index("recordingId")]
 )
 data class AudioChunk(
     @PrimaryKey(autoGenerate = true)
@@ -23,19 +23,12 @@ data class AudioChunk(
     val recordingId: Long,
     val chunkIndex: Int,
     val filePath: String,
-    val duration: Long, // in milliseconds
-    val fileSize: Long, // in bytes
     val startTime: Long,
     val endTime: Long,
+    val duration: Long,
+    val fileSize: Long,
     val transcriptionStatus: TranscriptionStatus = TranscriptionStatus.PENDING,
     val transcriptionText: String? = null,
     val transcriptionRetries: Int = 0,
-    val createdAt: Long = System.currentTimeMillis()
+    val errorMessage: String? = null
 )
-
-enum class TranscriptionStatus {
-    PENDING,
-    IN_PROGRESS,
-    COMPLETED,
-    FAILED
-}
