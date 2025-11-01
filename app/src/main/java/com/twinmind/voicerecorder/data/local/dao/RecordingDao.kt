@@ -3,12 +3,13 @@ package com.twinmind.voicerecorder.data.local.dao
 import androidx.room.*
 import com.twinmind.voicerecorder.data.local.entity.Recording
 import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
+import com.twinmind.voicerecorder.data.local.entity.TranscriptionStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecordingDao {
 
-    @Query("SELECT * FROM recordings ORDER BY createdAt DESC")
+    @Query("SELECT * FROM recordings ORDER BY startTime DESC")
     fun getAllRecordings(): Flow<List<Recording>>
 
     @Query("SELECT * FROM recordings WHERE id = :id")
@@ -18,7 +19,7 @@ interface RecordingDao {
     suspend fun getRecordingByIdSync(id: Long): Recording?
 
     @Query("SELECT * FROM recordings WHERE status = :status LIMIT 1")
-    suspend fun getRecordingByStatus(status: RecordingStatus): Recording?
+    suspend fun getActiveRecording(status: RecordingStatus = RecordingStatus.RECORDING): Recording?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecording(recording: Recording): Long
@@ -26,38 +27,23 @@ interface RecordingDao {
     @Update
     suspend fun updateRecording(recording: Recording)
 
-    @Query("UPDATE recordings SET status = :status, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun updateRecordingStatus(id: Long, status: RecordingStatus, updatedAt: Long = System.currentTimeMillis())
+    @Query("UPDATE recordings SET status = :status WHERE id = :id")
+    suspend fun updateStatus(id: Long, status: RecordingStatus)
 
-    @Query("UPDATE recordings SET endTime = :endTime, duration = :duration, totalChunks = :totalChunks, status = :status, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun finalizeRecording(
-        id: Long,
-        endTime: Long,
-        duration: Long,
-        totalChunks: Int,
-        status: RecordingStatus,
-        updatedAt: Long = System.currentTimeMillis()
-    )
+    @Query("UPDATE recordings SET pauseReason = :reason WHERE id = :id")
+    suspend fun updatePauseReason(id: Long, reason: String?)
 
-    @Query("UPDATE recordings SET transcript = :transcript, transcribedChunks = :transcribedChunks, status = :status, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun updateTranscript(
-        id: Long,
-        transcript: String,
-        transcribedChunks: Int,
-        status: RecordingStatus,
-        updatedAt: Long = System.currentTimeMillis()
-    )
+    @Query("UPDATE recordings SET endTime = :endTime, duration = :duration, status = :status WHERE id = :id")
+    suspend fun stopRecording(id: Long, endTime: Long, duration: Long, status: RecordingStatus)
 
-    @Query("UPDATE recordings SET summaryTitle = :title, summaryContent = :summary, actionItems = :actionItems, keyPoints = :keyPoints, status = :status, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun updateSummary(
-        id: Long,
-        title: String,
-        summary: String,
-        actionItems: String,
-        keyPoints: String,
-        status: RecordingStatus,
-        updatedAt: Long = System.currentTimeMillis()
-    )
+    @Query("UPDATE recordings SET transcript = :transcript, transcribedChunks = :transcribedChunks, transcriptionStatus = :transcriptionStatus WHERE id = :id")
+    suspend fun updateTranscript(id: Long, transcript: String, transcribedChunks: Int, transcriptionStatus: TranscriptionStatus)
+
+    @Query("UPDATE recordings SET summary = :summary, summaryTitle = :title, summaryActionItems = :actionItems, summaryKeyPoints = :keyPoints, status = :status WHERE id = :id")
+    suspend fun updateSummary(id: Long, summary: String, title: String?, actionItems: String?, keyPoints: String?, status: RecordingStatus)
+
+    @Query("UPDATE recordings SET errorMessage = :error WHERE id = :id")
+    suspend fun updateError(id: Long, error: String)
 
     @Delete
     suspend fun deleteRecording(recording: Recording)

@@ -9,19 +9,17 @@ import com.twinmind.voicerecorder.data.repository.RecordingRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 @HiltWorker
 class SummaryGenerationWorker @AssistedInject constructor(
-    @Assisted context: Context,
-    @Assisted workerParams: WorkerParameters,
+    @Assisted private val appContext: Context,
+    @Assisted private val workerParams: WorkerParameters,
     private val repository: RecordingRepository,
     private val summaryService: SummaryService
-) : CoroutineWorker(context, workerParams) {
+) : CoroutineWorker(appContext, workerParams) {
 
     companion object {
         const val KEY_RECORDING_ID = "recording_id"
@@ -34,12 +32,12 @@ class SummaryGenerationWorker @AssistedInject constructor(
 
             return OneTimeWorkRequestBuilder<SummaryGenerationWorker>()
                 .setInputData(data)
-                // No network constraints for mock service - will work offline
                 .setBackoffCriteria(
                     BackoffPolicy.EXPONENTIAL,
                     10,
                     TimeUnit.SECONDS
                 )
+                .addTag("summary_$recordingId")
                 .build()
         }
     }
@@ -51,50 +49,55 @@ class SummaryGenerationWorker @AssistedInject constructor(
         }
 
         try {
-            // Get recording
+            // Update recording status
+            repository.updateRecordingStatus(recordingId, RecordingStatus.GENERATING_SUMMARY)
+
+            // Get the recording
             val recording = repository.getRecordingByIdSync(recordingId)
-            if (recording == null || recording.transcript.isNullOrEmpty()) {
+            if (recording == null) {
                 return@withContext Result.failure()
             }
 
-            // Update status
-            repository.updateRecordingStatus(recordingId, RecordingStatus.GENERATING_SUMMARY)
+            val transcript = recording.transcript
+            if (transcript.isNullOrEmpty()) {
+                repository.updateError(recordingId, "No transcript available for summary generation")
+                repository.updateRecordingStatus(recordingId, RecordingStatus.SUMMARY_FAILED)
+                return@withContext Result.failure()
+            }
 
             // Generate summary with streaming
-            var finalTitle = ""
-            var finalSummary = ""
-            var finalActionItems = ""
-            var finalKeyPoints = ""
+            val fullSummaryBuilder = StringBuilder()
 
-            summaryService.generateSummary(recording.transcript)
-                .onEach { response ->
-                    // Update partial results in database
-                    finalTitle = response.title
-                    finalSummary = response.summary
-                    finalActionItems = response.actionItems.joinToString("\n")
-                    finalKeyPoints = response.keyPoints.joinToString("\n")
+            summaryService.generateSummary(transcript).collect { chunk ->
+                fullSummaryBuilder.append(chunk)
+                // Update summary in database as it streams
+                repository.updateSummary(
+                    recordingId,
+                    fullSummaryBuilder.toString(),
+                    null,
+                    null,
+                    null,
+                    RecordingStatus.GENERATING_SUMMARY
+                )
+            }
 
-                    // Save progress
-                    if (response.title.isNotEmpty() &&
-                        response.summary.isNotEmpty() &&
-                        response.actionItems.isNotEmpty() &&
-                        response.keyPoints.isNotEmpty()
-                    ) {
-                        repository.updateSummary(
-                            recordingId,
-                            finalTitle,
-                            finalSummary,
-                            finalActionItems,
-                            finalKeyPoints,
-                            RecordingStatus.SUMMARY_COMPLETE
-                        )
-                    }
-                }
-                .catch { e ->
-                    e.printStackTrace()
-                    throw e
-                }
-                .collect()
+            val fullSummary = fullSummaryBuilder.toString()
+
+            // Parse the summary
+            val parsedSummary = summaryService.parseSummaryResponse(fullSummary)
+
+            // Update with final parsed summary
+            repository.updateSummary(
+                recordingId,
+                parsedSummary.summary,
+                parsedSummary.title,
+                parsedSummary.actionItems.joinToString("\n"),
+                parsedSummary.keyPoints.joinToString("\n"),
+                RecordingStatus.SUMMARY_COMPLETE
+            )
+
+            // Mark as completed
+            repository.updateRecordingStatus(recordingId, RecordingStatus.COMPLETED)
 
             Result.success()
 
@@ -104,6 +107,7 @@ class SummaryGenerationWorker @AssistedInject constructor(
                 Result.retry()
             } else {
                 repository.updateRecordingStatus(recordingId, RecordingStatus.SUMMARY_FAILED)
+                repository.updateError(recordingId, e.message ?: "Summary generation error")
                 Result.failure()
             }
         }

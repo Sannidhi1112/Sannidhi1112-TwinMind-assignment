@@ -15,122 +15,88 @@ class RecordingRepository @Inject constructor(
     private val recordingDao: RecordingDao,
     private val audioChunkDao: AudioChunkDao
 ) {
-
     // Recording operations
-    fun getAllRecordings(): Flow<List<Recording>> {
-        return recordingDao.getAllRecordings()
-    }
+    fun getAllRecordings(): Flow<List<Recording>> = recordingDao.getAllRecordings()
 
-    fun getRecordingById(id: Long): Flow<Recording?> {
-        return recordingDao.getRecordingById(id)
-    }
+    fun getRecordingById(id: Long): Flow<Recording?> = recordingDao.getRecordingById(id)
 
-    suspend fun getRecordingByIdSync(id: Long): Recording? {
-        return recordingDao.getRecordingByIdSync(id)
-    }
+    suspend fun getRecordingByIdSync(id: Long): Recording? = recordingDao.getRecordingByIdSync(id)
 
-    suspend fun getRecordingByStatus(status: RecordingStatus): Recording? {
-        return recordingDao.getRecordingByStatus(status)
-    }
+    suspend fun getActiveRecording(): Recording? = recordingDao.getActiveRecording()
 
-    suspend fun insertRecording(recording: Recording): Long {
-        return recordingDao.insertRecording(recording)
-    }
+    suspend fun insertRecording(recording: Recording): Long = recordingDao.insertRecording(recording)
 
-    suspend fun updateRecording(recording: Recording) {
-        recordingDao.updateRecording(recording)
-    }
+    suspend fun updateRecording(recording: Recording) = recordingDao.updateRecording(recording)
 
     suspend fun updateRecordingStatus(id: Long, status: RecordingStatus) {
-        recordingDao.updateRecordingStatus(id, status)
+        recordingDao.updateStatus(id, status)
     }
 
-    suspend fun finalizeRecording(
-        id: Long,
-        endTime: Long,
-        duration: Long,
-        totalChunks: Int,
-        status: RecordingStatus
-    ) {
-        recordingDao.finalizeRecording(id, endTime, duration, totalChunks, status)
+    suspend fun updatePauseReason(id: Long, reason: String?) {
+        recordingDao.updatePauseReason(id, reason)
+    }
+
+    suspend fun stopRecording(id: Long, endTime: Long, duration: Long, status: RecordingStatus) {
+        recordingDao.stopRecording(id, endTime, duration, status)
     }
 
     suspend fun updateTranscript(
         id: Long,
         transcript: String,
         transcribedChunks: Int,
-        status: RecordingStatus
+        transcriptionStatus: TranscriptionStatus
     ) {
-        recordingDao.updateTranscript(id, transcript, transcribedChunks, status)
+        recordingDao.updateTranscript(id, transcript, transcribedChunks, transcriptionStatus)
     }
 
     suspend fun updateSummary(
         id: Long,
-        title: String,
         summary: String,
-        actionItems: String,
-        keyPoints: String,
+        title: String?,
+        actionItems: String?,
+        keyPoints: String?,
         status: RecordingStatus
     ) {
-        recordingDao.updateSummary(id, title, summary, actionItems, keyPoints, status)
+        recordingDao.updateSummary(id, summary, title, actionItems, keyPoints, status)
     }
 
-    suspend fun deleteRecording(recording: Recording) {
-        recordingDao.deleteRecording(recording)
+    suspend fun updateError(id: Long, error: String) {
+        recordingDao.updateError(id, error)
     }
 
-    suspend fun deleteRecordingById(id: Long) {
+    suspend fun deleteRecording(id: Long) {
         recordingDao.deleteRecordingById(id)
     }
 
     // Audio chunk operations
-    fun getChunksByRecordingId(recordingId: Long): Flow<List<AudioChunk>> {
-        return audioChunkDao.getChunksByRecordingId(recordingId)
-    }
+    fun getChunksByRecordingId(recordingId: Long): Flow<List<AudioChunk>> =
+        audioChunkDao.getChunksByRecordingId(recordingId)
 
-    suspend fun getChunksByRecordingIdSync(recordingId: Long): List<AudioChunk> {
-        return audioChunkDao.getChunksByRecordingIdSync(recordingId)
-    }
+    suspend fun getChunksByRecordingIdSync(recordingId: Long): List<AudioChunk> =
+        audioChunkDao.getChunksByRecordingIdSync(recordingId)
 
-    suspend fun getChunkById(id: Long): AudioChunk? {
-        return audioChunkDao.getChunkById(id)
-    }
+    suspend fun getChunkById(id: Long): AudioChunk? = audioChunkDao.getChunkById(id)
 
-    suspend fun getChunksByStatus(recordingId: Long, status: TranscriptionStatus): List<AudioChunk> {
-        return audioChunkDao.getChunksByStatus(recordingId, status)
-    }
+    suspend fun getChunksByStatus(recordingId: Long, status: TranscriptionStatus): List<AudioChunk> =
+        audioChunkDao.getChunksByStatus(recordingId, status)
 
-    suspend fun getPendingChunks(limit: Int = 10): List<AudioChunk> {
-        return audioChunkDao.getPendingChunks(TranscriptionStatus.PENDING, limit)
-    }
+    suspend fun insertChunk(chunk: AudioChunk): Long = audioChunkDao.insertChunk(chunk)
 
-    suspend fun getChunkCountByRecordingId(recordingId: Long): Int {
-        return audioChunkDao.getChunkCountByRecordingId(recordingId)
-    }
-
-    suspend fun getChunkCountByStatus(recordingId: Long, status: TranscriptionStatus): Int {
-        return audioChunkDao.getChunkCountByStatus(recordingId, status)
-    }
-
-    suspend fun insertChunk(chunk: AudioChunk): Long {
-        return audioChunkDao.insertChunk(chunk)
-    }
-
-    suspend fun updateChunk(chunk: AudioChunk) {
-        audioChunkDao.updateChunk(chunk)
-    }
+    suspend fun updateChunk(chunk: AudioChunk) = audioChunkDao.updateChunk(chunk)
 
     suspend fun updateChunkTranscription(id: Long, status: TranscriptionStatus, text: String?) {
-        audioChunkDao.updateChunkTranscription(id, status, text)
+        audioChunkDao.updateTranscription(id, status, text)
     }
 
     suspend fun incrementChunkRetries(id: Long) {
         audioChunkDao.incrementRetries(id)
     }
 
-    suspend fun deleteChunk(chunk: AudioChunk) {
-        audioChunkDao.deleteChunk(chunk)
+    suspend fun updateChunkError(id: Long, error: String) {
+        audioChunkDao.updateError(id, error)
     }
+
+    suspend fun getChunkCount(recordingId: Long): Int = audioChunkDao.getChunkCount(recordingId)
 
     suspend fun deleteChunksByRecordingId(recordingId: Long) {
         audioChunkDao.deleteChunksByRecordingId(recordingId)

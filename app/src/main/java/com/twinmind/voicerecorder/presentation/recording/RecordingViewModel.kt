@@ -1,24 +1,19 @@
 package com.twinmind.voicerecorder.presentation.recording
 
 import android.app.Application
+import android.content.ComponentName
 import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.twinmind.voicerecorder.data.local.entity.RecordingStatus
 import com.twinmind.voicerecorder.data.repository.RecordingRepository
 import com.twinmind.voicerecorder.data.service.RecordingService
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class RecordingUiState(
-    val isRecording: Boolean = false,
-    val isPaused: Boolean = false,
-    val status: RecordingStatus = RecordingStatus.STOPPED,
-    val duration: Long = 0L,
-    val statusMessage: String = "Ready to record"
-)
 
 @HiltViewModel
 class RecordingViewModel @Inject constructor(
@@ -26,27 +21,40 @@ class RecordingViewModel @Inject constructor(
     private val repository: RecordingRepository
 ) : AndroidViewModel(application) {
 
-    private val _uiState = MutableStateFlow(RecordingUiState())
-    val uiState: StateFlow<RecordingUiState> = _uiState.asStateFlow()
+    private var recordingService: RecordingService? = null
+    private var isBound = false
 
-    private var startTime: Long = 0L
+    private val _recordingState = MutableStateFlow<RecordingService.RecordingState>(
+        RecordingService.RecordingState.Idle
+    )
+    val recordingState: StateFlow<RecordingService.RecordingState> = _recordingState
 
-    init {
-        observeActiveRecording()
-    }
+    private val _elapsedTime = MutableStateFlow(0L)
+    val elapsedTime: StateFlow<Long> = _elapsedTime
 
-    private fun observeActiveRecording() {
-        viewModelScope.launch {
-            repository.getRecordingByStatus(RecordingStatus.RECORDING)?.let { recording ->
-                _uiState.update {
-                    it.copy(
-                        isRecording = true,
-                        status = recording.status,
-                        statusMessage = getStatusMessage(recording.status)
-                    )
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as RecordingService.RecordingBinder
+            recordingService = binder.getService()
+            isBound = true
+
+            // Observe service state
+            viewModelScope.launch {
+                recordingService?.recordingState?.collect { state ->
+                    _recordingState.value = state
                 }
-                startTime = recording.startTime
             }
+
+            viewModelScope.launch {
+                recordingService?.elapsedTime?.collect { time ->
+                    _elapsedTime.value = time
+                }
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            recordingService = null
+            isBound = false
         }
     }
 
@@ -56,15 +64,7 @@ class RecordingViewModel @Inject constructor(
             action = RecordingService.ACTION_START_RECORDING
         }
         context.startForegroundService(intent)
-
-        startTime = System.currentTimeMillis()
-        _uiState.update {
-            it.copy(
-                isRecording = true,
-                status = RecordingStatus.RECORDING,
-                statusMessage = "Recording..."
-            )
-        }
+        context.bindService(intent, serviceConnection, 0)
     }
 
     fun stopRecording() {
@@ -74,32 +74,33 @@ class RecordingViewModel @Inject constructor(
         }
         context.startService(intent)
 
-        _uiState.update {
-            it.copy(
-                isRecording = false,
-                isPaused = false,
-                status = RecordingStatus.STOPPED,
-                duration = 0L,
-                statusMessage = "Stopped"
-            )
+        if (isBound) {
+            context.unbindService(serviceConnection)
+            isBound = false
         }
     }
 
-    fun updateDuration(duration: Long) {
-        _uiState.update { it.copy(duration = duration) }
+    fun pauseRecording() {
+        val context = getApplication<Application>()
+        val intent = Intent(context, RecordingService::class.java).apply {
+            action = RecordingService.ACTION_PAUSE_RECORDING
+        }
+        context.startService(intent)
     }
 
-    private fun getStatusMessage(status: RecordingStatus): String {
-        return when (status) {
-            RecordingStatus.RECORDING -> "Recording..."
-            RecordingStatus.PAUSED_CALL -> "Paused - Phone call"
-            RecordingStatus.PAUSED_AUDIO_FOCUS -> "Paused - Audio focus lost"
-            RecordingStatus.STOPPED -> "Stopped"
-            RecordingStatus.TRANSCRIBING -> "Transcribing..."
-            RecordingStatus.TRANSCRIPTION_COMPLETE -> "Transcription complete"
-            RecordingStatus.GENERATING_SUMMARY -> "Generating summary..."
-            RecordingStatus.SUMMARY_COMPLETE -> "Complete"
-            else -> "Ready to record"
+    fun resumeRecording() {
+        val context = getApplication<Application>()
+        val intent = Intent(context, RecordingService::class.java).apply {
+            action = RecordingService.ACTION_RESUME_RECORDING
+        }
+        context.startService(intent)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        if (isBound) {
+            getApplication<Application>().unbindService(serviceConnection)
+            isBound = false
         }
     }
 }

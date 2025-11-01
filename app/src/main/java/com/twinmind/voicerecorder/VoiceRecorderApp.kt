@@ -23,41 +23,40 @@ class VoiceRecorderApp : Application(), Configuration.Provider {
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
+            .setMinimumLoggingLevel(android.util.Log.DEBUG)
             .build()
 
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val recordingChannel = NotificationChannel(
-                RECORDING_CHANNEL_ID,
-                "Recording Service",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Shows recording status"
-                setShowBadge(false)
-            }
-
-            val transcriptionChannel = NotificationChannel(
-                TRANSCRIPTION_CHANNEL_ID,
-                "Transcription Service",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Shows transcription progress"
-                setShowBadge(false)
-            }
-
-            val summaryChannel = NotificationChannel(
-                SUMMARY_CHANNEL_ID,
-                "Summary Generation",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Shows summary generation progress"
-                setShowBadge(false)
-            }
+            val channels = listOf(
+                NotificationChannel(
+                    RECORDING_CHANNEL_ID,
+                    "Recording Service",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Shows recording status and controls"
+                    setShowBadge(false)
+                },
+                NotificationChannel(
+                    TRANSCRIPTION_CHANNEL_ID,
+                    "Transcription Progress",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Shows transcription progress"
+                    setShowBadge(false)
+                },
+                NotificationChannel(
+                    SUMMARY_CHANNEL_ID,
+                    "Summary Generation",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Shows summary generation progress"
+                    setShowBadge(false)
+                }
+            )
 
             val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(recordingChannel)
-            notificationManager.createNotificationChannel(transcriptionChannel)
-            notificationManager.createNotificationChannel(summaryChannel)
+            channels.forEach { notificationManager.createNotificationChannel(it) }
         }
     }
 

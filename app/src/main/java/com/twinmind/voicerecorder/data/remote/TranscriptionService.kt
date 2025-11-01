@@ -1,76 +1,42 @@
 package com.twinmind.voicerecorder.data.remote
 
+import android.content.Context
 import kotlinx.coroutines.delay
 import java.io.File
 import javax.inject.Inject
-import javax.inject.Singleton
-import kotlin.random.Random
 
 /**
- * Mock transcription service that simulates OpenAI Whisper or Google Gemini API
- * In production, replace with actual API implementation
+ * Mock transcription service that simulates API calls
+ * In production, this would call OpenAI Whisper or Google Gemini
  */
-@Singleton
-class TranscriptionService @Inject constructor() {
-
-    /**
-     * Transcribe an audio file to text
-     * @param audioFile The audio file to transcribe
-     * @return The transcribed text
-     */
+class TranscriptionService @Inject constructor(
+    private val context: Context
+) {
     suspend fun transcribeAudio(audioFile: File): Result<String> {
         return try {
-            // Simulate API call delay (0.5-1 seconds for faster testing)
-            delay(Random.nextLong(500, 1000))
+            // Simulate API delay
+            delay(1000)
 
-            // Simulate occasional failures (5% failure rate)
-            if (Random.nextFloat() < 0.05f) {
-                return Result.failure(Exception("Transcription API error"))
-            }
+            // Mock transcription based on file duration/size
+            val mockText = generateMockTranscript(audioFile)
 
-            // Generate mock transcription based on file name/index
-            val transcription = generateMockTranscription(audioFile.name)
-            Result.success(transcription)
+            Result.success(mockText)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun generateMockTranscription(fileName: String): String {
-        // Extract chunk index from filename if present
-        val chunkIndex = fileName.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 0
+    private fun generateMockTranscript(file: File): String {
+        val sizeInKb = file.length() / 1024
+        val estimatedDuration = sizeInKb / 8 // Rough estimate
 
-        // Mock sentences pool
-        val sentences = listOf(
-            "Let's discuss the quarterly results for this project.",
-            "I think we should focus on improving user engagement metrics.",
-            "The team has made significant progress on the new features.",
-            "We need to address the technical debt in the codebase.",
-            "Customer feedback has been overwhelmingly positive.",
-            "Let's schedule a follow-up meeting next week.",
-            "The deployment went smoothly without any major issues.",
-            "We should prioritize bug fixes for the next sprint.",
-            "Marketing campaign results exceeded our expectations.",
-            "The new design mockups look great and align with our brand.",
-            "We need to allocate more resources to this initiative.",
-            "Testing coverage has improved significantly this quarter.",
-            "Let's brainstorm ideas for the upcoming product launch.",
-            "The integration with the third-party API is complete.",
-            "We should consider scaling our infrastructure soon.",
-            "User retention rates have increased by twenty percent.",
-            "The mobile app performance has been optimized.",
-            "Let's review the action items from our last meeting.",
-            "The security audit identified a few minor vulnerabilities.",
-            "Overall, the project is on track to meet the deadline."
-        )
-
-        // Generate 3-5 sentences per chunk
-        val sentenceCount = Random.nextInt(3, 6)
-        val startIndex = (chunkIndex * 3) % sentences.size
-        val selectedSentences = (0 until sentenceCount).map { i ->
-            sentences[(startIndex + i) % sentences.size]
+        return buildString {
+            append("This is a mock transcription for audio chunk. ")
+            append("The file size is approximately $sizeInKb KB. ")
+            append("Estimated duration is around $estimatedDuration seconds. ")
+            append("In a production environment, this would contain the actual ")
+            append("transcribed text from the audio using services like ")
+            append("OpenAI Whisper or Google Gemini. ")
         }
-
-        return selectedSentences.joinToString(" ")
     }
 }

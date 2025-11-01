@@ -16,19 +16,19 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = androidx.compose.ui.graphics.Color(0xFF6750A4),
-    secondary = androidx.compose.ui.graphics.Color(0xFF625B71),
-    tertiary = androidx.compose.ui.graphics.Color(0xFF7D5260)
+    primary = Purple80,
+    secondary = PurpleGrey80,
+    tertiary = Pink80
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = androidx.compose.ui.graphics.Color(0xFF6750A4),
-    secondary = androidx.compose.ui.graphics.Color(0xFF625B71),
-    tertiary = androidx.compose.ui.graphics.Color(0xFF7D5260)
+    primary = Purple40,
+    secondary = PurpleGrey40,
+    tertiary = Pink40
 )
 
 @Composable
-fun VoiceRecorderTheme(
+fun VoiceRecorderAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
@@ -41,6 +41,7 @@ fun VoiceRecorderTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
