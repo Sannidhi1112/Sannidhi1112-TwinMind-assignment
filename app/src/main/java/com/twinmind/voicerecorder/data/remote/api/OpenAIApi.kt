@@ -1,7 +1,9 @@
 package com.twinmind.voicerecorder.data.remote.api
 
+import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -26,7 +28,7 @@ interface OpenAIApi {
     suspend fun generateCompletionStream(
         @Header("Authorization") authorization: String,
         @Body request: ChatCompletionRequest
-    ): Response<okhttp3.ResponseBody>
+    ): ResponseBody
 }
 
 // Request/Response models
@@ -38,7 +40,9 @@ data class ChatCompletionRequest(
     val model: String,
     val messages: List<ChatMessage>,
     val stream: Boolean = false,
-    val temperature: Double = 0.7
+    val temperature: Double = 0.7,
+    @SerializedName("max_tokens")
+    val maxTokens: Int? = null
 )
 
 data class ChatMessage(
@@ -49,16 +53,20 @@ data class ChatMessage(
 data class ChatCompletionResponse(
     val id: String,
     val choices: List<Choice>,
-    val usage: Usage
+    val usage: Usage?
 )
 
 data class Choice(
     val message: ChatMessage,
-    val finish_reason: String?
+    @SerializedName("finish_reason")
+    val finishReason: String?
 )
 
 data class Usage(
-    val prompt_tokens: Int,
-    val completion_tokens: Int,
-    val total_tokens: Int
+    @SerializedName("prompt_tokens")
+    val promptTokens: Int,
+    @SerializedName("completion_tokens")
+    val completionTokens: Int,
+    @SerializedName("total_tokens")
+    val totalTokens: Int
 )
