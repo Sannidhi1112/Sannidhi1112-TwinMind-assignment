@@ -1,9 +1,23 @@
-# Local Configuration
-# This file is git-ignored and safe for API keys
+## API Configuration Template
+## Copy this file to 'local.properties' and add your real API keys
+## DO NOT commit local.properties to Git (it's in .gitignore for security)
 
-# Add your OpenAI API key here (get it from https://platform.openai.com/api-keys)
-# Replace the placeholder with your actual key
-OPENAI_API_KEY=sk-your-openai-api-key-here
+# OpenAI API Key (for Whisper transcription and GPT summaries)
+# Get your key from: https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-your-actual-openai-api-key-here
 
-# Optional: Add Gemini key if you want to use Google Gemini
-GEMINI_API_KEY=your-gemini-api-key-here
+# Google Gemini API Key (for AI summaries)
+# Get your key from: https://makersuite.google.com/app/apikey
+GEMINI_API_KEY=your-actual-gemini-api-key-here
+
+## Instructions:
+## 1. Copy this file: cp local.properties.example local.properties
+## 2. Edit local.properties and replace the placeholder keys with your real keys
+## 3. Save the file
+## 4. Build the app: ./gradlew clean assembleDebug
+
+## Security Note:
+## - local.properties is git-ignored and will NOT be committed
+## - Never share your API keys publicly
+## - Never commit API keys to Git
+## - If you accidentally expose a key, revoke it immediately and create a new one
