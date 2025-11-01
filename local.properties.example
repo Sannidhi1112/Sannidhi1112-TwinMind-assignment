@@ -1,0 +1,9 @@
+# Local Configuration
+# This file is git-ignored and safe for API keys
+
+# Add your OpenAI API key here (get it from https://platform.openai.com/api-keys)
+# Replace the placeholder with your actual key
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Optional: Add Gemini key if you want to use Google Gemini
+GEMINI_API_KEY=your-gemini-api-key-here
